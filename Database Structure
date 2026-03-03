@@ -1,0 +1,71 @@
+# DATABASE STRUCTURE AND MARGIN PROFIT CALCULATION
+
+The database includes six tables:
+
+- Costs: contains the fields id, unit_cost, additional_unit_cost (representing costs that may occur in non-standard situations), supplier_id, and product_id.
+- Invoice_Detail: contains the fields id, unit_cost, additional_unit_cost, total_unit_cost, and product_id.
+- Prices: contains the fields id, unit_price, supplier_id, and product_id.
+- Products: contains the fields id and product.
+- Suppliers: contains the fields id and supplier.
+- Sales: contains the fields id, quantity, sale_date, base_unit_price, additional_unit_charge, unit_sale_price, and product_id.
+
+# Below is the process used to create the corresponding tables:
+
+CREATE TABLE costs (
+    id SERIAL PRIMARY KEY,
+    unit_cost NUMERIC(6,2) NOT NULL,
+    additional_unit_cost NUMERIC(6,2) NOT NULL,
+    supplier_id INTEGER,
+    product_id INTEGER
+);
+
+CREATE TABLE invoice_detail (
+    id SERIAL PRIMARY KEY,
+    quantity INTEGER,
+    unit_cost NUMERIC(12,2),
+    additional_unit_cost NUMERIC(12,2),
+    total_unit_cost NUMERIC(12,2),
+    product_id INTEGER NOT NULL REFERENCES products(id)
+);
+
+CREATE TABLE prices (
+    id SERIAL PRIMARY KEY,
+    unit_price NUMERIC(6,2) NOT NULL,
+    supplier_id INTEGER NOT NULL REFERENCES suppliers(id),
+    product_id INTEGER NOT NULL REFERENCES products(id)
+);
+
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    product VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE suppliers (
+    id SERIAL PRIMARY KEY,
+    supplier VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE sales (
+    id SERIAL PRIMARY KEY,
+    quantity INTEGER NOT NULL,
+    sale_date DATE NOT NULL,
+    base_unit_price NUMERIC(6,2) NOT NULL,
+    additional_unit_charge NUMERIC(6,2) NOT NULL,
+    sale_unit_price NUMERIC(6,2) NOT NULL,
+    product_id INTEGER NOT NULL REFERENCES products(id)
+);
+
+# This query provides a summary comparing sales and costs to determine the profit margin both in monetary value and as a percentage:
+
+SELECT 
+    invoice_detail.id, 
+    product, 
+    invoice_detail.quantity AS purchase_quantity, 
+    sales.quantity AS sold_quantity, 
+    ROUND((sale_unit_price * sales.quantity), 2) AS total_sales, 
+    ROUND((invoice_detail.quantity * total_unit_cost), 2) AS total_cost, 
+    ROUND(((sale_unit_price * sales.quantity) - (invoice_detail.quantity * total_unit_cost)), 2) AS "profit_$", 
+    ROUND(((1 - ((invoice_detail.quantity * total_unit_cost) / (sale_unit_price * sales.quantity))) * 100), 2) AS "profit_%"
+FROM invoice_detail
+LEFT JOIN sales ON sales.product_id = invoice_detail.product_id
+LEFT JOIN products ON products.id = invoice_detail.product_id;
